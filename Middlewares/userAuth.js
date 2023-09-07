@@ -13,7 +13,7 @@ const db = require("../Models");
      },
    });
    if (username) {
-     return res.json(409).send("Username is use, please try another one.");
+     return res.json(409).send("Username is used, please try another one.");
    }
 
 
