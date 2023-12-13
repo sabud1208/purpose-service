@@ -14,6 +14,18 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false
         },
+        age:{
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+        minAge:{
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+        maxAge:{
+            type: DataTypes.INTEGER,
+            allowNull: false
+        }
     }, {timestamps: true}, )
     return User
  }
