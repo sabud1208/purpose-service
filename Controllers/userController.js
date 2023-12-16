@@ -39,40 +39,57 @@ const authenticateToken = (req, res) => {
   });
 };
 
-const getAgePreference = async (req, res) =>{
+const getAgePreference = async (req, res) => {
   try {
-    const { minAge,maxAge } = req.body;
-    
-       const user = await User.findAll({
-        someAttribute: {
-          [Op.between]: [minAge, maxAge]
-         }})
-         if(user){
-          return res.status(201).send(user);
-         }
-        
-}catch (error) {
-  console.log(error);
-}
-}
+    const { email } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({
+      attributes: ['id', 'userName', 'email', 'age', 'minAge', 'maxAge'],
+      where: {
+        email: email,
+      },
+    });
+
+    if (user) {
+      const { minAge, maxAge } = user;
+
+      // Find all users with age within the specified range
+      const usersWithSameAgePreferences = await User.findAll({
+        attributes: ['id', 'userName', 'email', 'age', 'minAge', 'maxAge'],
+        where: {
+          age: {
+            [Op.between]: [minAge, maxAge],
+          },
+        },
+      });
+
+      return res.status(200).send(usersWithSameAgePreferences);
+    } else {
+      return res.status(404).send({ error: 'User not found' });
+    }
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
 const getUser = async (res) => { 
   
-  if(User){
-    return res.status(201)
-  }else {
-    return res.status(500)
-  }
+  console.log(User);
 }
 const signup = async (req, res) => {
  try {
-   const { userName, email, password, age, minAge, maxAge } = req.body;
+   const { userName, email, password, age, minAge, maxAge, images } = req.body;
    const data = {
      userName,
      email,
      password: await bcrypt.hash(password, 10),
      age,
      minAge,
-     maxAge
+     maxAge,
+     images
    };
   
    const user = await User.create(data);
@@ -96,6 +113,7 @@ const signup = async (req, res) => {
  }
 };
 
+
 const login = async (req, res) => {
  try {
 const { email, password } = req.body;
@@ -107,8 +125,7 @@ const { email, password } = req.body;
      });
 
    if (user) {
-     const doesPasswordMatch = await bcrypt.compare(password, user.password);
-
+    const isSame = await bcrypt.compare(password, user.password);
      if (isSame) {
        let token = jwt.sign({ id: user.id }, process.env.secretKey, {
          expiresIn: 1 * 24 * 60 * 60 * 1000,
@@ -129,9 +146,42 @@ const { email, password } = req.body;
 };
 
 
+const updateUserAgePreferences = async (req, res) => {
+  try {
+    const { email, minAge, maxAge } = req.body;
+
+    // Validate that email, minAge, and maxAge are provided
+    if (!email || !minAge || !maxAge) {
+      return res.status(400).send({ error: 'email, minAge, and maxAge are required' });
+    }
+
+    // Update user's minAge and maxAge in the database based on email
+    const [updatedRowsCount, updatedRows] = await User.update(
+      { minAge, maxAge },
+      {
+        where: {
+          email: email,
+        },
+        returning: true, // Get the updated rows in the result
+      }
+    );
+
+    // Check if the user was found and updated
+    if (updatedRowsCount === 1) {
+      return res.status(200).send({ message: 'User age preferences updated successfully', user: updatedRows[0] });
+    } else {
+      return res.status(404).send({ error: 'User not found' });
+    }
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({ error: 'Internal Server Error' });
+  }
+};
 
 
 module.exports = {
+  updateUserAgePreferences,
   getAgePreference,
   getUser,
   getAllUsers,
